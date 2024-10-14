@@ -15,7 +15,39 @@ const aliasWhiteList = env.ALIAS_WHITELIST ? env.ALIAS_WHITELIST.split(',') : []
 // 从环境变量中导入群聊白名单
 const roomWhiteList = env.ROOM_WHITELIST ? env.ROOM_WHITELIST.split(',') : []
 
+// 从环境变量中导入语音群聊白名单
+const voiceRoomWhiteList = env.VOICE_ROOM_WHITELIST ? env.VOICE_ROOM_WHITELIST.split(',') : []
+
 import { getServe } from './serve.js'
+import { fileURLToPath } from 'url'
+import { dirname } from 'path'
+import fs from 'fs'
+import path from 'path'
+import { execSync } from 'child_process'
+import NodeCache from 'node-cache'
+import { Readable } from 'stream'
+import ffmpeg from 'ffmpeg-static'
+import { spawn } from 'child_process'
+import vosk from 'vosk'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+// 会话缓存，最大容量10，过期时间30分钟
+const conversationCache = new NodeCache({ stdTTL: 1800, checkperiod: 600, maxKeys: 10 })
+
+// Vosk 模型路径
+const modelPath = path.join(__dirname, '../voice/model/vosk-model-small-cn')
+
+// 检查 Vosk 模型是否存在
+if (!fs.existsSync(modelPath)) {
+  console.error('❌ Vosk 模型不存在，请检查路径:', modelPath)
+  process.exit(1)
+}
+
+// 加载 Vosk 模型
+vosk.setLogLevel(0)
+const model = new vosk.Model(modelPath)
 
 /**
  * 默认消息发送
@@ -27,7 +59,6 @@ import { getServe } from './serve.js'
 export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
   const getReply = getServe(ServiceType)
   const contact = msg.talker() // 发消息人
-  const receiver = msg.to() // 消息接收人
   const content = msg.text() // 消息内容
   const room = msg.room() // 是否是群消息
   const roomName = (await room?.topic()) || null // 群名称
@@ -35,102 +66,106 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
   const remarkName = await contact.alias() // 备注名称
   const name = await contact.name() // 微信名称
   const isText = msg.type() === bot.Message.Type.Text // 消息类型是否为文本
-  const isRoom = roomWhiteList.includes(roomName) && content.includes(`${botName}`) // 是否在群聊白名单内并且艾特了机器人
+  const isVoice = msg.type() === bot.Message.Type.Audio || msg.type() === bot.Message.Type.Voice // 是否为语音消息
+  const isRoom = room && roomWhiteList.includes(roomName) && content.includes(`${botName}`) // 是否在群聊白名单内并且艾特了机器人
   const isAlias = aliasWhiteList.includes(remarkName) || aliasWhiteList.includes(name) // 发消息的人是否在联系人白名单内
+  const isVoiceRoom = room && voiceRoomWhiteList.includes(roomName) // 是否在语音群聊白名单内
   const isBotSelf = botName === remarkName || botName === name // 是否是机器人自己
-  // TODO 你们可以根据自己的需求修改这里的逻辑
-  if (isBotSelf || !isText) return // 如果是机器人自己发送的消息或者消息类型不是文本则不处理
+
+  if (isBotSelf) return // 如果是机器人自己发送的消息则不处理
+
   try {
-    // 区分群聊和私聊
-    // 群聊消息去掉艾特主体后，匹配自动回复前缀
-    if (isRoom && room && content.replace(`${botName}`, '').trimStart().startsWith(`${autoReplyPrefix}`)) {
-      const question = (await msg.mentionText()) || content.replace(`${botName}`, '').replace(`${autoReplyPrefix}`, '') // 去掉艾特的消息主体
-      console.log('🌸🌸🌸 / question: ', question)
-      const conversationId = room.id // 使用群聊 ID 作为会话 ID
-      const response = await getReply(question, conversationId)
-      await room.say(response)
+    // 处理文本消息
+    if (isText) {
+      // 群聊
+      if (isRoom && content.replace(`${botName}`, '').trimStart().startsWith(`${autoReplyPrefix}`)) {
+        const question = (await msg.mentionText()) || content.replace(`${botName}`, '').replace(`${autoReplyPrefix}`, '') // 去掉艾特的消息主体
+        console.log('🌸🌸🌸 / question: ', question)
+        const conversationId = room.id // 使用群聊 ID 作为会话 ID
+        const response = await getReply(question, conversationId)
+        await room.say(response)
+      }
+      // 私聊
+      if (isAlias && !room && content.trimStart().startsWith(`${autoReplyPrefix}`)) {
+        const question = content.replace(`${autoReplyPrefix}`, '')
+        console.log('🌸🌸🌸 / content: ', question)
+        const conversationId = contact.id // 使用联系人 ID 作为会话 ID
+        const response = await getReply(question, conversationId)
+        await contact.say(response)
+      }
     }
-    // 私人聊天，白名单内的直接发送
-    // 私人聊天直接匹配自动回复前缀
-    if (isAlias && !room && content.trimStart().startsWith(`${autoReplyPrefix}`)) {
-      const question = content.replace(`${autoReplyPrefix}`, '')
-      console.log('🌸🌸🌸 / content: ', question)
-      const conversationId = contact.id // 使用联系人 ID 作为会话 ID
-      const response = await getReply(question, conversationId)
-      await contact.say(response)
+    // 处理语音消息
+    else if (isVoice) {
+      const fileBox = await msg.toFileBox()
+      const fileName = fileBox.name
+      const tmpDir = path.join(__dirname, '../voice/tmp')
+      if (!fs.existsSync(tmpDir)) {
+        fs.mkdirSync(tmpDir, { recursive: true })
+      }
+      const amrPath = path.join(tmpDir, fileName)
+
+      // 保存语音文件
+      await fileBox.toFile(amrPath, true)
+
+      // 转换为 PCM 格式
+      const audioStream = fs.createReadStream(amrPath)
+      const command = ffmpeg
+      const args = [
+        '-loglevel', 'quiet',
+        '-i', 'pipe:0',
+        '-ar', '16000',
+        '-ac', '1',
+        '-f', 's16le',
+        'pipe:1'
+      ]
+      const ffmpegProcess = spawn(command, args, { stdio: ['pipe', 'pipe', 'ignore'] })
+      audioStream.pipe(ffmpegProcess.stdin)
+
+      const rec = new vosk.Recognizer({ model: model, sampleRate: 16000 })
+      ffmpegProcess.stdout.on('data', (chunk) => {
+        rec.acceptWaveform(chunk)
+      })
+
+      ffmpegProcess.stdout.on('end', async () => {
+        const result = rec.finalResult()
+        console.log('🌸🌸🌸 / Vosk 识别结果: ', result.text)
+        const question = result.text
+
+        // 群聊语音消息
+        if (isVoiceRoom) {
+          const conversationId = room.id // 使用群聊 ID 作为会话 ID
+          const response = await getReply(question, conversationId)
+          await room.say(response)
+        }
+        // 私聊语音消息
+        else if (isAlias && !room) {
+          const conversationId = contact.id // 使用联系人 ID 作为会话 ID
+          const response = await getReply(question, conversationId)
+          await contact.say(response)
+        }
+
+        // 删除临时文件
+        fs.unlinkSync(amrPath)
+        // 释放资源
+        rec.free()
+      })
+
+      ffmpegProcess.on('error', (e) => {
+        console.error('❌ ffmpeg 转换失败:', e)
+        fs.unlinkSync(amrPath)
+        rec.free()
+      })
+
+      ffmpegProcess.on('close', (code) => {
+        if (code !== 0) {
+          console.error(`❌ ffmpeg 进程退出，退出码 ${code}`)
+          fs.unlinkSync(amrPath)
+          rec.free()
+        }
+      })
     }
   } catch (e) {
     console.error(e)
   }
-}
-
-/**
- * 分片消息发送
- * @param message
- * @param bot
- * @returns {Promise<void>}
- */
-export async function shardingMessage(message, bot) {
-  const talker = message.talker()
-  const isText = message.type() === bot.Message.Type.Text // 消息类型是否为文本
-  if (talker.self() || message.type() > 10 || (talker.name() === '微信团队' && isText)) {
-    return
-  }
-  const text = message.text()
-  const room = message.room()
-  if (!room) {
-    console.log(`Chat GPT Enabled User: ${talker.name()}`)
-    const conversationId = talker.id // 使用联系人 ID 作为会话 ID
-    const response = await getChatGPTReply(text, conversationId)
-    await trySay(talker, response)
-    return
-  }
-  let realText = splitMessage(text)
-  // 如果是群聊但不是指定艾特人那么就不进行发送消息
-  if (text.indexOf(`${botName}`) === -1) {
-    return
-  }
-  realText = text.replace(`${botName}`, '')
-  const topic = await room.topic()
-  const conversationId = room.id // 使用群聊 ID 作为会话 ID
-  const response = await getChatGPTReply(realText, conversationId)
-  const result = `${realText}\n ---------------- \n ${response}`
-  await trySay(room, result)
-}
-
-// 分片长度
-const SINGLE_MESSAGE_MAX_SIZE = 500
-
-/**
- * 发送
- * @param talker 发送哪个  room为群聊类 text为单人
- * @param msg
- * @returns {Promise<void>}
- */
-async function trySay(talker, msg) {
-  const messages = []
-  let message = msg
-  while (message.length > SINGLE_MESSAGE_MAX_SIZE) {
-    messages.push(message.slice(0, SINGLE_MESSAGE_MAX_SIZE))
-    message = message.slice(SINGLE_MESSAGE_MAX_SIZE)
-  }
-  messages.push(message)
-  for (const msg of messages) {
-    await talker.say(msg)
-  }
-}
-
-/**
- * 分组消息
- * @param text
- * @returns {Promise<*>}
- */
-async function splitMessage(text) {
-  let realText = text
-  const item = text.split('- - - - - - - - - - - - - - -')
-  if (item.length > 1) {
-    realText = item[item.length - 1]
-  }
-  return realText
 }
 

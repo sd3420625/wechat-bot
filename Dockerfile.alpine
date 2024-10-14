@@ -18,6 +18,10 @@ RUN apk update && \
       vim \
       xauth \
       xvfb \
+      alsa-lib \
+      alsa-utils \
+      build-base \
+      pkgconfig \
     && rm -rf /tmp/* /var/cache/apk/*
 
 
@@ -43,3 +47,4 @@ COPY *.js ./
 COPY src/ ./src/
 
 CMD ["npm", "run", "dev"]
+
