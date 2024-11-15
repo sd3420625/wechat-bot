@@ -8,8 +8,7 @@
 
 <div align='center'>
   <a href="https://trendshift.io/repositories/11077" target="_blank"><img src="https://trendshift.io/api/badge/repositories/11077" alt="wangrongding%2Fwechat-bot | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-</div>  
-
+</div>
 
 ## 贡献者们
 
@@ -19,18 +18,36 @@
 
 欢迎大家提交 PR 接入更多的 ai 服务(比如扣子等...)，积极贡献更好的功能实现，让 wechat-bot 变得更强！
 
-## 使用前需要配置的 AI 服务（目前支持 6 种，可任选其一）
+## 使用前需要配置的 AI 服务（目前支持 8 种，可任选其一）
 
-- 302.AI
+- ChatGPT
 
-  AI聚合平台，有套壳GPT的API，也有其他模型，点这里可以[添加API](https://dash.302.ai/apis/list)，添加之后把API KEY配置到.env里，如下，MODEL可以自行选择配置
+  先获取自己的 `api key`，地址戳这里 👉🏻 ：[创建你的 api key](https://beta.openai.com/account/api-keys)
 
+  **注意：这个是需要去付费购买的，很多人过来问为什么请求不通，请确保终端走了代理，并且付费购买了它的服务**
+
+  ```sh
+  # 执行下面命令，拷贝一份 .env.example 文件为 .env
+  cp .env.example .env
+  # 填写完善 .env 文件中的内容
+  OPENAI_API_KEY='你的key'
   ```
-  _302AI_API_KEY = 'xxxx'
-  _302AI_MODEL= 'gpt-4o-mini'
-  ```
 
-  由于openai充值需要国外信用卡，流程比较繁琐，大多需要搞国外虚拟卡，手续费也都不少，该平台可以直接支付宝，算是比较省事的，注册填问卷可领1刀额度，后续充值也有手续费，用户可自行酌情选择。
+- 通义千问
+
+  通义千问是阿里云提供的 AI 服务，获取到你的 api key 之后, 填写到 .env 文件中即可
+
+  ```sh
+  # 执行下面命令，拷贝一份 .env.example 文件为 .env
+  cp .env.example .env
+  # 填写完善 .env 文件中的内容
+  # 通义千问, URL 包含 uri 路径
+  TONGYI_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  # 通义千问的 API_KEY
+  TONGYI_API_KEY = ''
+  # 通义千问使用的模型
+  TONGYI_MODEL='qwen-plus'
+  ```
 
 - deepseek 获取自己的 `api key`，地址戳这里 👉🏻 ：[deepseek 开放平台](https://platform.deepseek.com/usage)  
   将获取到的`api key`填入 `.evn` 文件中的 `DEEPSEEK_FREE_TOKEN` 中。
@@ -47,19 +64,6 @@
   可以去 ： [kimi apikey](https://platform.moonshot.cn/console/api-keys) 获取你的 key  
   最近比较忙，大家感兴趣可以提交 PR，我会尽快合并。目前 Kimi 刚刚集成，还可以实现上传文件等功能，然后有其它较好的服务也可以提交 PR 。
 
-- ChatGPT
-
-  先获取自己的 `api key`，地址戳这里 👉🏻 ：[创建你的 api key](https://beta.openai.com/account/api-keys)
-
-  **注意：这个是需要去付费购买的，很多人过来问为什么请求不通，请确保终端走了代理，并且付费购买了它的服务**
-
-  ```sh
-  # 执行下面命令，拷贝一份 .env.example 文件为 .env
-  cp .env.example .env
-  # 填写完善 .env 文件中的内容
-  OPENAI_API_KEY='你的key'
-  ```
-
 - dify
 
   地址：[dify](https://dify.ai/), 创建你的应用之后, 获取到你的 api key 之后, 填写到 .env 文件中即可, 也支持私有化部署dify版本
@@ -72,6 +76,30 @@
   # 如果需要私有化部署，请修改.env中下面的配置
   # DIFY_URL='https://[你的私有化部署地址]'
   ```
+
+- ollama
+
+  Ollama 是一个本地化的 AI 服务，它的 API 与 OpenAI 非常接近。配置 Ollama 的过程与各种在线服务略有不同
+
+  ```sh
+  # 执行下面命令，拷贝一份 .env.example 文件为 .env
+  cp .env.example .env
+  # 填写完善 .env 文件中的内容
+  OLLAMA_URL='http://127.0.0.1:11434/api/chat'
+  OLLAMA_MODEL='qwen2.5:7b'
+  OLLAMA_SYSTEM_MESSAGE='You are a personal assistant.'
+  ```
+
+- 302.AI
+
+  AI聚合平台，有套壳GPT的API，也有其他模型，点这里可以[添加API](https://dash.302.ai/apis/list)，添加之后把API KEY配置到.env里，如下，MODEL可以自行选择配置
+
+  ```
+  _302AI_API_KEY = 'xxxx'
+  _302AI_MODEL= 'gpt-4o-mini'
+  ```
+
+  由于openai充值需要国外信用卡，流程比较繁琐，大多需要搞国外虚拟卡，手续费也都不少，该平台可以直接支付宝，算是比较省事的，注册填问卷可领1刀额度，后续充值也有手续费，用户可自行酌情选择。
 
 - 其他  
   （待实践）理论上使用 openAI 格式的 api，都可以使用，在 env 文件中修改对应的 api_key、model、proxy_url 即可。
@@ -89,7 +117,7 @@
   </a>
 </p>
 
-> 302.AI 是一个汇集全球顶级 AI 的自助平台，按需付费，零月费，零门槛使用各种类型 AI。 [产品链接](https://302.ai) | [网站介绍](https://help.302.ai)
+> 302.AI是一个按需付费的一站式AI应用平台，为用户解决AI用于实践的最后一公里问题。 [产品链接](https://302.ai) | [网站介绍](https://help.302.ai)
 
 目前该项目流量较大，已经上过 27 次 [Github Trending 榜](https://github.com/trending)，如果您的公司或者产品需要推广，可以在下方二维码处联系我，我会在项目中加入您的广告，帮助您的产品获得更多的曝光。
 
