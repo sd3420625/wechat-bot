@@ -111,13 +111,37 @@
 
 ## 赞助商
 
-<p align="center">
-  <a href="https://302.ai" target="_blank">
-    <img src="./sponsors/302AI.png" alt="Hi" width="200" />
-  </a>
-</p>
-
-> 302.AI是一个按需付费的一站式AI应用平台，为用户解决AI用于实践的最后一公里问题。 [产品链接](https://302.ai) | [网站介绍](https://help.302.ai)
+<div align="center">
+  <table>
+    <!-- Header -->
+    <tr>
+      <td align="center" width="50%">
+        <p align="center">
+          <a href="https://302.ai" target="_blank">
+            <img src="./sponsors/302AI.png" alt="Hi"/>
+          </a>
+        </p>
+      </td>
+      <td align="center" width="50%">
+        <p align="center">
+          <a href="https://302.ai" target="_blank">
+            <img src="./sponsors/server.jpg" alt="Hi"/>
+          </a>
+        </p>
+      </td>
+    </tr>
+    <!-- des -->
+    <tr>
+      <td align="left">
+        302.AI 是一个汇集全球顶级 AI 的自助平台，按需付费，零月费，零门槛使用各种类型 AI。
+        <a href="https://help.302.ai" target="_blank">网站介绍</a>
+        |
+        <a href="https://302.ai" target="_blank">产品链接</a>
+      </td>
+      <td align="left">提供claude gemini 等模型 价格低至0.55一刀 (vx: spkf789)</td>
+    </tr>
+  </table>
+</div>
 
 目前该项目流量较大，已经上过 27 次 [Github Trending 榜](https://github.com/trending)，如果您的公司或者产品需要推广，可以在下方二维码处联系我，我会在项目中加入您的广告，帮助您的产品获得更多的曝光。
 
@@ -234,7 +258,7 @@ AUTO_REPLY_PREFIX=''
 
 - 确保你的 openai key 有余额
 - 配置好 .env 文件
-- 执行 npm run test 能成功拿到 openai 的回复
+- 执行 npm run test 能成功拿到 openai 的回复(设置完代理后，仍然请求不通？ 可以参考： https://medium.com/@chanter2d/%E5%85%B3%E4%BA%8E%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8clash%E5%AE%9E%E7%8E%B0%E7%9C%9F%E6%AD%A3%E7%9A%84%E5%85%A8%E5%B1%80%E4%BB%A3%E7%90%86-385b2d745871)
 - 执行 npm run dev 愉快的玩耍吧~ 🎉
 
 也可以参考这条 [issue](https://github.com/wangrongding/wechat-bot/issues/54#issuecomment-1347880291)
